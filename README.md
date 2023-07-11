@@ -1,4 +1,4 @@
-# cnn in numpy 
+# CNN in numpy 
 ## train
 I write a cnn network in numpy fully, including forward and backpropagation.<br><br>
 In training, it use cpu and slowly, so I write three model with different size, the network is modified by alexnet<br><br>

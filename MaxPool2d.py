@@ -37,6 +37,29 @@ class maxpooling_layer(object):
         ar_output[cnt] = maxval
         ar_record[cnt*2] = h_start+index[0][0]
         ar_record[cnt*2 + 1] = w_start+index[1][0]
+    
+    def im2col(self, ishape):
+        ksize = self.pool_size[0] * self.pool_size[1]
+        out = np.zeros((ishape[0] * ishape[1] * self.oh * self.ow, ksize))
+        cnt = 0
+        h_ = []
+        w_ = []
+        for i in range(ishape[0]):
+            for j in range(ishape[1]):
+                for h in range(self.oh):
+                    h_start = h * self.strides[0]
+                    h_.extend([h_start] * self.ow)
+                    for w in range(self.ow):
+                        w_start = w * self.strides[1]
+                        slide_window = self.pad_input[i, j, h_start:h_start + self.pool_size[0], \
+                                            w_start:w_start + self.pool_size[1]]
+                        kk = slide_window.flatten()
+                        out[cnt, :] = kk
+                        cnt += 1
+                        w_.append(w_start)
+        self.record[:, 0] = h_
+        self.record[:, 1] = w_
+        return out
 
     def forward(self, inputs):
         self.inputs = inputs
@@ -60,19 +83,29 @@ class maxpooling_layer(object):
 
         output = np.zeros(self.outshape)
 
-        self.record = []
-        for i in range(ishape[0]):
-            for j in range(ishape[1]):
-                for h in range(self.oh):
-                    h_start = h * self.strides[0]
-                    for w in range(self.ow):
-                        w_start = w * self.strides[1]
-                        slide_window = self.pad_input[i, j, h_start:h_start + self.pool_size[0], \
-                                            w_start:w_start + self.pool_size[1]]
-                        maxval = np.max(slide_window)
-                        index = np.where(slide_window==maxval)
-                        self.record.append([h_start+index[0][0], w_start+index[1][0]])
-                        output[i, j, h, w] = maxval
+        self.record = np.zeros((np.prod(output.shape), 2))
+        out = self.im2col(ishape)
+        maxval = np.max(out, axis = -1)
+        output = np.reshape(maxval, self.outshape)
+
+        max_index = np.argmax(out, axis = -1)
+        self.record[:, 0] += max_index // self.pool_size[1]
+        self.record[:, 1] += max_index % self.pool_size[1]
+        self.record = np.array(self.record, dtype = np.int32)
+
+        # self.record = []
+        # for i in range(ishape[0]):
+        #     for j in range(ishape[1]):
+        #         for h in range(self.oh):
+        #             h_start = h * self.strides[0]
+        #             for w in range(self.ow):
+        #                 w_start = w * self.strides[1]
+        #                 slide_window = self.pad_input[i, j, h_start:h_start + self.pool_size[0], \
+        #                                     w_start:w_start + self.pool_size[1]]
+        #                 maxval = np.max(slide_window)
+        #                 index = np.where(slide_window==maxval)
+        #                 self.record.append([h_start+index[0][0], w_start+index[1][0]])
+        #                 output[i, j, h, w] = maxval
 
         #multiprocessing speed up
         # self.record = np.zeros(np.prod(output.shape)*2)
@@ -111,7 +144,7 @@ class maxpooling_layer(object):
         return input_delta
 
 if __name__=="__main__":
-    inputs = np.random.rand(2, 3, 100, 300) * 100
+    inputs = np.random.rand(2, 3, 100, 300) # * 100
     pool_size = [3, 3]
     strides = [2, 2]
     padding = [1, 1]

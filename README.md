@@ -1,6 +1,8 @@
 # CNN in numpy 
 ## train
 I write a cnn network in numpy fully, including forward and backpropagation.<br><br>
+including those layers, convolution, AvgPooling, MaxPooling, Fullconnect, <br>
+flatten, Relu, dropout, batchnorm, Cross Entropy loss and MSE loss<br><br>
 In training, it use cpu and slowly, so I write three model with different size, the network is modified by alexnet<br><br>
 Training it with MNIST dataset, **it’s precision can > 90%**, it's training now<br><br>
 this codes provide functions to save model and restore model to train<br><br>

@@ -40,12 +40,12 @@ class fclayer(object):
         if list(params)!=[]:
             self.params = params
         else:
-            ranges = np.sqrt(6 / (infeature + outfeature))
+            ranges = np.sqrt(1 / infeature)
             self.params = np.random.uniform(-ranges, ranges, (infeature, outfeature))
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
-            ranges = np.sqrt(6 / (infeature + outfeature))
+            ranges = np.sqrt(1 / infeature)
             self.bias_params = np.random.uniform(-ranges, ranges, (outfeature))
         self.params_delta = np.zeros((infeature, outfeature))
         self.bias_delta = np.zeros(outfeature)

@@ -28,35 +28,37 @@ def Alexnet_train(num_classes):
         convolu0 = convolution_layer(1, 32, kernel_size=3, stride=1, padding=1)
         relu0    = ReLU()
         max0     = maxpooling_layer(pool_size=3, strides=2)
-        convolu1 = convolution_layer(32, 60, kernel_size=3, padding=2)
+        convolu1 = convolution_layer(32, 90, kernel_size=3, padding=2)
         relu1    = ReLU()
         max1     = maxpooling_layer(pool_size=3, strides=2)
-        convolu2 = convolution_layer(60, 96, kernel_size=3, padding=1)
+        convolu2 = convolution_layer(90, 200, kernel_size=3, padding=1)
         relu2    = ReLU()
-        convolu3 = convolution_layer(96, 60, kernel_size=3, padding=1)
+        convolu3 = convolution_layer(200, 200, kernel_size=3, padding=1)
         relu3    = ReLU()
-        convolu4 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        convolu4 = convolution_layer(200, 300, kernel_size=3, padding=1)
         relu4    = ReLU()
-        convolu5 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        convolu5 = convolution_layer(300, 60, kernel_size=3, padding=1)
         relu5    = ReLU()
-        convolu6 = convolution_layer(60, 130, kernel_size=3, padding=1)
-        relu6    = ReLU()
-        convolu7 = convolution_layer(130, 60, kernel_size=3, padding=1)
-        relu7    = ReLU()
-        convolu8 = convolution_layer(60, 60, kernel_size=3, padding=1)
-        relu8    = ReLU()
+        # convolu6 = convolution_layer(100, 60, kernel_size=3, padding=1)
+        # relu6    = ReLU()
+        # convolu7 = convolution_layer(130, 60, kernel_size=3, padding=1)
+        # relu7    = ReLU()
+        # convolu8 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        # relu8    = ReLU()
         max2     = maxpooling_layer(pool_size=3, strides=2)
         dropout0 = dropout_layer(dropout_probability=0.3)
         fla0     = flatten_layer()
-        fc0      = fclayer(1080//2, 1000)
-        relu9    = ReLU()
+        fc0      = fclayer(1080//2, 2000)
+        relu6    = ReLU()
         dropout1 = dropout_layer(dropout_probability=0.3)
-        fc1      = fclayer(1000, 600)
-        relu10    = ReLU()
+        fc1      = fclayer(2000, 600)
+        relu7    = ReLU()
         fc2      = fclayer(600, num_classes)
+        # layers = [convolu0, relu0, max0, convolu1, relu1, max1, convolu2, relu2, convolu3, relu3, \
+        #           convolu4, relu4, convolu5, relu5, convolu6, relu6, convolu7, relu7, convolu8, relu8, \
+        #           max2, fla0, fc0, relu9, fc1, relu10, fc2]
         layers = [convolu0, relu0, max0, convolu1, relu1, max1, convolu2, relu2, convolu3, relu3, \
-                  convolu4, relu4, convolu5, relu5, convolu6, relu6, convolu7, relu7, convolu8, relu8, \
-                  max2, fla0, fc0, relu9, fc1, relu10, fc2]
+                convolu4, relu4, convolu5, relu5, max2, fla0, fc0, relu6, fc1, relu7, fc2]
     elif choose=="large":
         convolu0 = convolution_layer(1, 32, kernel_size=3, stride=1, padding=1)
         relu0    = ReLU()
@@ -233,7 +235,7 @@ def Alexnet_train(num_classes):
     loss = 999999
     iters = number_image//batchsize + number_image%batchsize
     dot = np.power(0.001, 1/epoch)
-    for i in range(epoch):
+    for i in range(7, epoch):
         meanloss = 0
         # if i!=0:
             # lr = lr * dot
@@ -278,7 +280,12 @@ def Alexnet_train(num_classes):
             label = testlabel[j*batchsize:(j+1)*batchsize, :]
             label_single = test_l[j*batchsize:(j+1)*batchsize]
             for l in range(len(layers)):
+                k = dir(l)
+                if 'layer_batchnorm' in k:
+                    l.train = False
                 images = layers[l].forward(images)
+                if 'layer_batchnorm' in k:
+                    l.train = True
             loss, delta, predict = cross_entropy_loss(images, label)
             p = np.argmax(predict, axis=-1)
             length += len(label_single)
@@ -310,11 +317,11 @@ def Alexnet_train(num_classes):
 
 if __name__ =="__main__":
     savepath = abspath
-    choose = 'large'           #   [mid, small, small_bn, large, large_bn, morelarge]
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_0_loss_0.329452_pre_0.90 8_large.pkl'
+    choose = 'morelarge'           #   [mid, small, small_bn, large, large_bn, morelarge]
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_6_loss_0.160115_pre_0.951_morelarge.pkl'
     logdir = os.path.join(savepath, 'log')
     logfile = os.path.join(logdir, 'log_alexnet_mnist_%s.txt'%choose)
-    fpwrite = open(logfile, 'w', encoding='utf-8')
+    fpwrite = open(logfile, 'a+', encoding='utf-8')
     
     Alexnet_train(10)
     fpwrite.close()

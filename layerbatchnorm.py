@@ -40,21 +40,13 @@ class layer_batchnorm(object):
     def __init__(self, num_feature, train = True, affine = True, gamma = [], beta = []):
         self.num_feature = num_feature
         self.affine = affine
+        self.gamma = np.ones(num_feature)
+        self.beta  = np.zeros(num_feature)
         if affine and list(gamma)!=[]:
             self.gamma = gamma
-        else:
-            ranges = np.sqrt(6 / (num_feature))
-            self.gamma = np.random.uniform(-ranges, ranges, (num_feature))
 
         if affine and list(beta)!=[]:
             self.beta = beta
-        else:
-            ranges = np.sqrt(6 / (num_feature))
-            self.beta = np.random.uniform(-ranges, ranges, (num_feature))
-
-        if not affine:
-            self.gamma = np.ones(num_feature)
-            self.beta  = np.ones(num_feature)
 
         self.gamma_delta = np.zeros(num_feature).astype(np.float64)
         self.beta_delta = np.zeros(num_feature).astype(np.float64)

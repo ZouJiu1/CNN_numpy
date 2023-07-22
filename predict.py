@@ -25,35 +25,37 @@ def loading_model(num_classes):
         convolu0 = convolution_layer(1, 32, kernel_size=3, stride=1, padding=1)
         relu0    = ReLU()
         max0     = maxpooling_layer(pool_size=3, strides=2)
-        convolu1 = convolution_layer(32, 60, kernel_size=3, padding=2)
+        convolu1 = convolution_layer(32, 90, kernel_size=3, padding=2)
         relu1    = ReLU()
         max1     = maxpooling_layer(pool_size=3, strides=2)
-        convolu2 = convolution_layer(60, 96, kernel_size=3, padding=1)
+        convolu2 = convolution_layer(90, 200, kernel_size=3, padding=1)
         relu2    = ReLU()
-        convolu3 = convolution_layer(96, 60, kernel_size=3, padding=1)
+        convolu3 = convolution_layer(200, 200, kernel_size=3, padding=1)
         relu3    = ReLU()
-        convolu4 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        convolu4 = convolution_layer(200, 300, kernel_size=3, padding=1)
         relu4    = ReLU()
-        convolu5 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        convolu5 = convolution_layer(300, 60, kernel_size=3, padding=1)
         relu5    = ReLU()
-        convolu6 = convolution_layer(60, 130, kernel_size=3, padding=1)
-        relu6    = ReLU()
-        convolu7 = convolution_layer(130, 60, kernel_size=3, padding=1)
-        relu7    = ReLU()
-        convolu8 = convolution_layer(60, 60, kernel_size=3, padding=1)
-        relu8    = ReLU()
+        # convolu6 = convolution_layer(100, 60, kernel_size=3, padding=1)
+        # relu6    = ReLU()
+        # convolu7 = convolution_layer(130, 60, kernel_size=3, padding=1)
+        # relu7    = ReLU()
+        # convolu8 = convolution_layer(60, 60, kernel_size=3, padding=1)
+        # relu8    = ReLU()
         max2     = maxpooling_layer(pool_size=3, strides=2)
         dropout0 = dropout_layer(dropout_probability=0.3)
         fla0     = flatten_layer()
-        fc0      = fclayer(1080//2, 1000)
-        relu9    = ReLU()
+        fc0      = fclayer(1080//2, 2000)
+        relu6    = ReLU()
         dropout1 = dropout_layer(dropout_probability=0.3)
-        fc1      = fclayer(1000, 600)
-        relu10    = ReLU()
+        fc1      = fclayer(2000, 600)
+        relu7    = ReLU()
         fc2      = fclayer(600, num_classes)
+        # layers = [convolu0, relu0, max0, convolu1, relu1, max1, convolu2, relu2, convolu3, relu3, \
+        #           convolu4, relu4, convolu5, relu5, convolu6, relu6, convolu7, relu7, convolu8, relu8, \
+        #           max2, fla0, fc0, relu9, fc1, relu10, fc2]
         layers = [convolu0, relu0, max0, convolu1, relu1, max1, convolu2, relu2, convolu3, relu3, \
-                  convolu4, relu4, convolu5, relu5, convolu6, relu6, convolu7, relu7, convolu8, relu8, \
-                  max2, fla0, fc0, relu9, fc1, relu10, fc2]
+                convolu4, relu4, convolu5, relu5, max2, fla0, fc0, relu6, fc1, relu7, fc2]
     elif choose=="large":
         convolu0 = convolution_layer(1, 32, kernel_size=3, stride=1, padding=1)
         relu0    = ReLU()
@@ -248,6 +250,8 @@ def predict_evaluate(layers):
             images = images[:, np.newaxis, :, :]
             label = testlabel[j*batchsize:(j+1)*batchsize, :]
             label_single = test_l[j*batchsize:(j+1)*batchsize]
+            if len(images)==0:
+                break
             for l in range(len(layers)):
                 images = layers[l].forward(images)
             loss, delta, predict = cross_entropy_loss(images, label)
@@ -258,17 +262,23 @@ def predict_evaluate(layers):
             for ij in range(len(p)):
                 if p[ij]==label_single[ij]:
                     dic[p[ij]] += 1
-            
+            if j %1==0:
+                print(j) 
+        print(dic)
+        dickk = {}
+        for key, value in dic.items():
+            label_g = np.array(test_l, dtype = np.int32)
+            dickk[key] = value / np.sum(label_g==int(key))
         precision = acc / length
-        name = "epoch_"+str(i)+"_pre_"+str(round(precision, 6))+"_%s.csv"%choose
-        dic['precision'] = precision
-        df = pd.DataFrame(dic, index=np.arange(1)).T
+        name = pretrained_model.replace(".pkl", "_evalall.csv")
+        dickk['precision'] = precision
+        df = pd.DataFrame(dickk, index=np.arange(1)).T
         df.to_csv(os.path.join(abspath, name), index=True)
 
 if __name__ =="__main__":
     savepath = abspath
-    choose = 'small_bn'               #   [mid, small, small_bn, large, large_bn, morelarge]
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_0 _loss_0.422414_pre_0.883_large.pkl'
+    choose = 'morelarge'               #   [mid, small, small_bn, large, large_bn, morelarge]
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_9_loss_0.130142_pre_0.967_morelarge.pkl'
     layers = loading_model(10)
     predict_or_evaluate = False
     predict_evaluate(layers)

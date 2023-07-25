@@ -1,23 +1,25 @@
 import os
-from dropout import dropout_layer
-from Convolution import convolution_layer
-from MaxPool2d import maxpooling_layer
-from Avgpooling import avgpooling_layer
-from loss import cross_entropy_loss, mean_square_loss
-from fullconnect import fclayer
-from activation import ReLU
-from flatten import flatten_layer
+import sys
+abspath = os.path.abspath(__file__)
+filename = abspath.split(os.sep)[-1]
+abspath = abspath.replace(filename, "")
+sys.path.append(abspath)
+
+from net.dropout import dropout_layer
+from net.Convolution import convolution_layer
+from net.MaxPool2d import maxpooling_layer
+from net.Avgpooling import avgpooling_layer
+from net.loss import cross_entropy_loss, mean_square_loss
+from net.fullconnect import fclayer
+from net.activation import ReLU
+from net.flatten import flatten_layer
 import numpy as np
 import pickle
-from layerbatchnorm import layer_batchnorm
+from net.layerbatchnorm import layer_batchnorm
 
 from torchvision import datasets
 from PIL import Image
 import pandas as pd
-
-abspath = os.path.abspath(__file__)
-filename = abspath.split(os.sep)[-1]
-abspath = abspath.replace(filename, "")
 
 # https://en.wikipedia.org/wiki/AlexNet
 # https://pytorch.org/vision/stable/_modules/torchvision/models/alexnet.html#alexnet
@@ -191,7 +193,7 @@ def Alexnet_train(num_classes):
         fc2      = fclayer(90, num_classes)
         layers = [convolu0, bn0, relu0, max0, convolu1, bn1, relu1, max1, convolu2, bn2, relu2, convolu3, bn3, relu3, \
                 convolu4, bn4, relu4, max2, fla0, fc0, relu5, fc1, relu6, fc2]
-    
+
     if os.path.exists(pretrained_model):
         with open(pretrained_model, 'rb') as obj:
             models = pickle.load(obj)
@@ -201,7 +203,8 @@ def Alexnet_train(num_classes):
             if 'restore_model' in k and 'save_model' in k:
                 l.restore_model(models[cnt])
                 cnt += 1
-            
+        del models
+
     epoch = 20
     batchsize = 100
     lr = 0.0001
@@ -209,7 +212,7 @@ def Alexnet_train(num_classes):
     os.makedirs(datapath, exist_ok=True)
     modelpath = os.path.join(abspath, 'model')
     os.makedirs(modelpath, exist_ok=True)
-    
+
     datatest = datasets.MNIST(root = datapath, train=False, download=True)
     datatrain = datasets.MNIST(root = datapath, train=True, download=True)
     testdata, testlabel = datatest._load_data()
@@ -235,7 +238,10 @@ def Alexnet_train(num_classes):
     loss = 999999
     iters = number_image//batchsize + number_image%batchsize
     dot = np.power(0.001, 1/epoch)
-    for i in range(7, epoch):
+
+    start_epoch = int(pretrained_model.split(os.sep)[-1].split("_")[1])
+
+    for i in range(start_epoch, epoch):
         meanloss = 0
         # if i!=0:
             # lr = lr * dot
@@ -243,7 +249,7 @@ def Alexnet_train(num_classes):
         np.random.shuffle(k)
         datas = datas[k]
         labels = labels[k]
-        
+
         train_l = train_l[k]
         for j in range(iters):
             images = datas[j*batchsize:(j+1)*batchsize, :, :]
@@ -252,16 +258,21 @@ def Alexnet_train(num_classes):
             images = images[:, np.newaxis, :, :]
             images = images
             for l in range(len(layers)):
+                kl = dir(layers[l])
+                if '__name__' in kl and 'layer_batchnorm' in layers[l].__name__():
+                    layers[l].train = True
                 images = layers[l].forward(images)
             loss, delta, predict = cross_entropy_loss(images, label)
             meanloss += loss
             p = np.argmax(predict, axis=-1)
             precision = np.sum(label_single==p) / len(label_single)
-                
+
             fpwrite.write("epoch:{}, lr: {:.6f}, loss: {:.6f}, iters: {}, precision: {:.6f}\n".format(i, lr, loss, j, precision))
             fpwrite.flush()
             for l in range(len(layers)-1, -1, -1):
-                delta = layers[l].backward(delta, lr)
+                delta = layers[l].backward(delta)
+                layers[l].update(lr)
+                layers[l].setzero()
         acc = 0
         length = 0
         k = np.arange(len(testdata))
@@ -280,11 +291,11 @@ def Alexnet_train(num_classes):
             label = testlabel[j*batchsize:(j+1)*batchsize, :]
             label_single = test_l[j*batchsize:(j+1)*batchsize]
             for l in range(len(layers)):
-                k = dir(l)
-                if 'layer_batchnorm' in k:
+                kl = dir(layers[l])
+                if '__name__' in kl and 'layer_batchnorm' in layers[l].__name__():
                     l.train = False
                 images = layers[l].forward(images)
-                if 'layer_batchnorm' in k:
+                if '__name__' in kl and 'layer_batchnorm' in layers[l].__name__():
                     l.train = True
             loss, delta, predict = cross_entropy_loss(images, label)
             p = np.argmax(predict, axis=-1)
@@ -318,7 +329,7 @@ def Alexnet_train(num_classes):
 if __name__ =="__main__":
     savepath = abspath
     choose = 'morelarge'           #   [mid, small, small_bn, large, large_bn, morelarge]
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_6_loss_0.160115_pre_0.951_morelarge.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_cnn\model\epoch_9_loss_0.130142_pre_0.967_morelarge.pkl'
     logdir = os.path.join(savepath, 'log')
     logfile = os.path.join(logdir, 'log_alexnet_mnist_%s.txt'%choose)
     fpwrite = open(logfile, 'a+', encoding='utf-8')

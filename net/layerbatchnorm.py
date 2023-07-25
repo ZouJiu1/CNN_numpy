@@ -109,12 +109,20 @@ class layer_batchnorm(object):
         #     three/NHW
             
         if self.affine:
-            self.gamma_delta = np.sum(self.normal * delta, axis = (0, 2, 3))
-            self.beta_delta = np.sum(delta, axis = (0, 2, 3))
-            self.gamma -= self.gamma_delta * lr
-            self.beta  -= self.beta_delta * lr
+            self.gamma_delta += np.sum(self.normal * delta, axis = (0, 2, 3))
+            self.beta_delta += np.sum(delta, axis = (0, 2, 3))
 
         return input_delta
+
+    def setzero(self):
+        if self.affine:
+            self.gamma_delta[...]  = 0.0
+            self.beta_delta[...] = 0.0
+
+    def update(self, lr = 1e-10):
+        if self.affine:
+            self.gamma -= self.gamma_delta * lr
+            self.beta  -= self.beta_delta * lr
 
     def save_model(self):
         return [self.gamma, self.beta, self.running_mean, self.running_var]
@@ -124,6 +132,9 @@ class layer_batchnorm(object):
         self.beta = models[1]
         self.running_mean = models[2]
         self.running_var = models[3]
+
+    def __name__(self):
+        return "layer_batchnorm"
 
 def train_single():
     inputs = np.random.rand(2, 3, 60, 60).astype(np.float64)

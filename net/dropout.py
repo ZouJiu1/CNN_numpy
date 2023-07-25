@@ -38,6 +38,9 @@ class dropout_layer(object):
         next_delta = (delta * self.mask) / (1 - self.dropout_probability)
         return next_delta
 
+    def __name__(self):
+        return "dropout_layer"
+
 if __name__=="__main__":
     inputs = np.random.rand(1, 10, 3, 3)
     dropout_probability = 0.2

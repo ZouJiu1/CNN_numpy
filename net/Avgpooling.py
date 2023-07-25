@@ -136,6 +136,15 @@ class avgpooling_layer(object):
         input_delta = input_delta[:, :, self.padding[0]:ih-self.padding[0], self.padding[1]:iw-self.padding[1]]
         return input_delta
     
+    def __name__(self):
+        return "avgpooling_layer"
+        
+    def setzero(self):
+        pass
+
+    def update(self, lr = 1e-10):
+        pass
+
 if __name__=="__main__":
     inputs = np.random.rand(2, 3, 100, 300) * 100
     pool_size = [3, 3]

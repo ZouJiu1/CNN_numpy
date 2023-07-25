@@ -1,24 +1,28 @@
 import os
-from dropout import dropout_layer
-from Convolution import convolution_layer
-from MaxPool2d import maxpooling_layer
-from Avgpooling import avgpooling_layer
-from loss import cross_entropy_loss, mean_square_loss
-from fullconnect import fclayer
-from activation import ReLU
-from flatten import flatten_layer
+import sys
+
+abspath = os.path.abspath(__file__)
+filename = abspath.split(os.sep)[-1]
+abspath = abspath.replace(filename, "")
+
+sys.path.append(abspath)
+
+from net.dropout import dropout_layer
+from net.Convolution import convolution_layer
+from net.MaxPool2d import maxpooling_layer
+# from net.Avgpooling import avgpooling_layer
+from net.loss import cross_entropy_loss # , mean_square_loss
+from net.fullconnect import fclayer
+from net.activation import ReLU
+from net.flatten import flatten_layer
 import numpy as np
 import pickle
-from layerbatchnorm import layer_batchnorm
+from net.layerbatchnorm import layer_batchnorm
 from torchvision import datasets
 from PIL import Image
 import pandas as pd
 from copy import deepcopy
 import matplotlib.pyplot as plt
-
-abspath = os.path.abspath(__file__)
-filename = abspath.split(os.sep)[-1]
-abspath = abspath.replace(filename, "")
 
 def loading_model(num_classes):
     if choose=="morelarge":

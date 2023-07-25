@@ -19,6 +19,7 @@ python predict.py
 ```
 
 ### precision
+train in MacBook Pro 2020 Intel
 
 | morelarge classes | precision |
 | ------ | ------ |

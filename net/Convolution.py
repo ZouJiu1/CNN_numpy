@@ -35,7 +35,7 @@ def torch_compare_convolution(in_channel, out_channel, kernel_size, stride, padd
     return output, k, grad_params, grad_bias
 
 class convolution_layer(object):
-    def __init__(self, in_channel, out_channel, kernel_size, stride=[1,1], padding=[0,0], bias=False, params=[], bias_params=[]):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=[1,1], padding=[0,0], bias=True, params=[], bias_params=[]):
         self.in_channel = in_channel
         self.out_channel = out_channel
         if isinstance(kernel_size, int):
@@ -45,13 +45,13 @@ class convolution_layer(object):
         if list(params)!=[]:
             self.params = params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (in_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.params = np.random.uniform(-ranges, ranges, (out_channel, in_channel, kernel_size[0], kernel_size[1]))
 
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (in_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.bias_params = np.random.uniform(-ranges, ranges, (out_channel))
 
         self.params_delta = np.zeros((out_channel, in_channel, kernel_size[0], kernel_size[1])).astype(np.float64)
@@ -182,10 +182,14 @@ class convolution_layer(object):
         output = np.reshape(output, (outshape_params_gradient[0], \
             outshape_params_gradient[2], outshape_params_gradient[3], outshape_params_gradient[1]))
         params_delta = np.transpose(output, (3, 0, 1, 2))
-        if H_outshape_params_gradient > self.kernel_size[0]:
+        if H_outshape_params_gradient > self.kernel_size[0] and W_outshape_params_gradient > self.kernel_size[1]:
+            self.params_delta += params_delta[:, :, :self.kernel_size[0], :self.kernel_size[1]]
+        elif H_outshape_params_gradient > self.kernel_size[0]:
             self.params_delta += params_delta[:, :, :self.kernel_size[0], :]
-        if W_outshape_params_gradient > self.kernel_size[1]:
+        elif W_outshape_params_gradient > self.kernel_size[1]:
             self.params_delta += params_delta[:, :, :, :self.kernel_size[1]]
+        else:
+            self.params_delta += params_delta
         
         # calcul externel pad shape and input_delta
         remain_h = (self.ishape[2] + 2 * self.padding[0] - self.kernel_size[0]) % self.stride[0]
@@ -255,7 +259,9 @@ def train_single():
         sum = np.sum((outputs - out) * (outputs - out))
         delta = 2*(out - outputs)
         # partial_, = convolution.backward_common(delta)
-        partial = convolution.backward(delta, 0.0001)
+        partial = convolution.backward(delta)
+        convolution.update(0.0001)
+        convolution.setzero()
         print(sum)
 
 if __name__=="__main__":

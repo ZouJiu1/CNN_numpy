@@ -80,7 +80,8 @@ if __name__=="__main__":
     # ReLU()
     input = np.random.rand(10, 300)
     delta = np.random.rand(10, 300)
-    gelu = torch.nn.GELU().requires_grad_(True)
+    # gelu = torch.nn.GELU().requires_grad_(True)
+    gelu = torch.nn.SiLU().requires_grad_(True)
     i = torch.tensor(input, requires_grad=True)
     out = gelu(i)
     d = torch.tensor(delta)
@@ -88,7 +89,8 @@ if __name__=="__main__":
     i.retain_grad()
     k = i.grad
     
-    g = GELU()
+    # g = GELU()
+    g = SiLU()
     o = g.forward(input)
     kk = g.backward(delta)
     assert np.mean(np.abs(kk - k.cpu().detach().numpy())) < 1e-6, np.mean(np.abs(kk - k.cpu().detach().numpy()))

@@ -36,9 +36,11 @@ def torch_compare_ConvTranspose2d(in_channel, out_channel, kernel_size, stride, 
     return output, k, grad_params, grad_bias
 
 class ConvTranspose2d_layer(object):
-    def __init__(self, in_channel, out_channel, kernel_size, output_padding=0, stride=[1,1], padding=[0,0], bias=False, params=[], bias_params=[]):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=[1,1], padding=[0,0], bias=False, params=[], bias_params=[], output_padding=[0, 0]):
         self.in_channel = in_channel
         self.out_channel = out_channel
+        if isinstance(output_padding, int):
+            output_padding = [output_padding, output_padding]
         self.output_padding = output_padding
         if isinstance(kernel_size, int):
             kernel_size = [kernel_size, kernel_size]
@@ -47,13 +49,13 @@ class ConvTranspose2d_layer(object):
         if list(params)!=[]:
             self.params = params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (self.out_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.params = np.random.uniform(-ranges, ranges, (out_channel, in_channel, kernel_size[0], kernel_size[1]))
 
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (self.out_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.bias_params = np.random.uniform(-ranges, ranges, (out_channel))
 
         self.params_delta = np.zeros((in_channel, out_channel, kernel_size[0], kernel_size[1])).astype(np.float64)
@@ -144,10 +146,14 @@ class ConvTranspose2d_layer(object):
         output = np.reshape(output, (outshape_params_gradient[0], \
             outshape_params_gradient[2], outshape_params_gradient[3], outshape_params_gradient[1]))
         params_delta = np.transpose(output, (3, 0, 1, 2))
-        if H_outshape_params_gradient > self.kernel_size[0]:
+        if H_outshape_params_gradient > self.kernel_size[0] and W_outshape_params_gradient > self.kernel_size[1]:
+            self.params_delta += params_delta[:, :, :self.kernel_size[0], :self.kernel_size[1]]
+        elif H_outshape_params_gradient > self.kernel_size[0]:
             self.params_delta += params_delta[:, :, :self.kernel_size[0], :]
-        if W_outshape_params_gradient > self.kernel_size[1]:
+        elif W_outshape_params_gradient > self.kernel_size[1]:
             self.params_delta += params_delta[:, :, :, :self.kernel_size[1]]
+        else:
+            self.params_delta += params_delta
         return input_delta
 
     def setzero(self):
@@ -202,6 +208,9 @@ class ConvTranspose2d_layer(object):
 
     def forward(self, inputs):
         # previous layer delta convert of convolution
+        assert self.output_padding[0] < self.stride[0]
+        assert self.output_padding[1] < self.stride[1]
+
         self.inputs = inputs
         self.ishape = inputs.shape
         self.oh = (self.ishape[2] - 1) * self.stride[0] + self.kernel_size[0] - 2 * self.padding[0] + self.output_padding[0]  # convert (self.ishape[2] + 2 * self.padding[0] - self.kernel_size[0])//self.stride[0] + 1
@@ -264,20 +273,22 @@ def train_single():
     if bias:
         bias_params = np.random.standard_normal(out_channel) / np.sqrt(in_channel/2)
         bias_params = bias_params.astype(np.float64)
-    ConvTranspose2d = ConvTranspose2d_layer(in_channel, out_channel, kernel_size, output_padding, stride, padding, bias, params.copy(), bias_params.copy())
+    ConvTranspose2d = ConvTranspose2d_layer(in_channel, out_channel, kernel_size, stride, padding, bias, params.copy(), bias_params.copy(), output_padding)
     for i in range(30000):
         out = ConvTranspose2d.forward(inputs)
         sum = np.sum((outputs - out) * (outputs - out))
         delta = 2*(out - outputs)
         # partial_, = convolution.backward_common(delta, 0.0001)
-        partial = ConvTranspose2d.backward(delta, 0.0001)
+        partial = ConvTranspose2d.backward(delta)
+        ConvTranspose2d.update(0.0001)
+        ConvTranspose2d.setzero()
         print(sum)
 
 if __name__=="__main__":
     # train_single()
 
-    out_channel = 6
-    inputs = np.random.rand(2, 10, 10, 30).astype(np.float64)
+    out_channel = 10
+    inputs = np.random.rand(2, 10, 10, 10).astype(np.float64)
     batchsize = inputs.shape[0]
     in_channel = inputs.shape[1]
     ih = inputs.shape[2]
@@ -294,11 +305,11 @@ if __name__=="__main__":
         bias_params = np.random.standard_normal(out_channel) / np.sqrt(in_channel/2)
         bias_params = bias_params.astype(np.float64)
 
-    convolution = ConvTranspose2d_layer(in_channel, out_channel, kernel_size, output_padding, stride, padding, bias, params.copy(), bias_params.copy())
+    convolution = ConvTranspose2d_layer(in_channel, out_channel, kernel_size, stride, padding, bias, params.copy(), bias_params.copy(), output_padding)
     output = convolution.forward(inputs)
-    output_k = convolution.forward_common(inputs)
+    # output_k = convolution.forward_common(inputs)
     delta = np.ones(convolution.outshape).astype(np.float64)
-    partial_k = convolution.common_backward_calcul(delta)
+    # partial_k = convolution.common_backward_calcul(delta)
     partial = convolution.backward(delta)
 
     output_torch, partial_torch, grad_params_torch, grad_bias_torch = torch_compare_ConvTranspose2d(in_channel, out_channel, kernel_size, stride, padding, bias, inputs, params.copy(), bias_params.copy(), delta, output_padding)
